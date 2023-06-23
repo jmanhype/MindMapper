@@ -36,9 +36,9 @@ class Agent:
         self.role = role  # Add this line to store the
         self.knowledge = set()  # Add this line to include the 'knowledge' attribute
 
-        self.api_key = "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"
+        self.api_key = "ENTER-OPENAI-KEY"
         openai.api_key = self.api_key
-        self.google_api_key = "AIzaSyA4ZE2PS0sRuw1UkY4V-7lrefkitJlPvFs"
+        self.google_api_key = "ENTER-GOOGLE-KEY"
 
         self.sentiment_analyzer = SentimentAnalyzer()
         self.emotional_state = "neutral"
