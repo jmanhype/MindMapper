@@ -36,19 +36,33 @@ The project consists of the following components:
    cd MindMapper
    ```
 
-3. (Optional) Create a virtual environment:
-
+3. Update the API keys in the agents.py file.
+   Make sure to replace the placeholders with your actual API keys.
+   Refer to the instructions in agents.py for details.
+   
+4. (Optional) Create a virtual environment:
+   
    ```bash
    python -m venv venv
    source venv/bin/activate  # For Unix/Linux
    venv\Scripts\activate  # For Windows
    ```
 
-4. Install the required dependencies:
+5. Install the required dependencies:
 
    ```bash
    pip install -r requirements.txt
    ```
+   
+## API Keys
+
+The MindMapper project requires API keys for certain functionalities. You need to obtain the following API keys and update them in the agents.py file:
+
+Google API Key: Obtain a Google API key from the Google Cloud Console. It is used for agent interactions.
+
+OpenAI API Key: Obtain an OpenAI API key from the OpenAI website. It is used for generating context-aware messages.
+
+Make sure to keep your API keys secure and avoid sharing them publicly.
 
 ## Usage
 
