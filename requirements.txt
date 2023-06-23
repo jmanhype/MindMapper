@@ -1,0 +1,12 @@
+colorama
+google-api-python-client
+numpy
+openai
+pandas
+python-dateutil
+pytz
+six
+tensorflow
+textblob
+torch
+yake
