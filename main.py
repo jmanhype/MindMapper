@@ -19,17 +19,28 @@ def main():
     user_role = os.getenv('USER_ROLE', 'user1')
     behavior = os.getenv('BEHAVIOR', 'curious')
 
+    # Define valid domains
+    valid_domains = ['finance', 'healthcare', 'education', 'technology']
+
+    def get_valid_domain(prompt):
+        while True:
+            domain_input = input(prompt).strip().lower()
+            if domain_input in valid_domains:
+                return domain_input
+            else:
+                print(Fore.RED + f"Invalid domain. Valid domains are: {', '.join(valid_domains)}" + Fore.RESET)
+
     # User inputs
     goal = input("Enter the goal for agents: ").strip()
-    domain = input("Enter the domain related to the goal: ").strip()
-    domain1 = input("Enter the first domain related to the goal: ").strip()
-    domain2 = input("Enter the second domain related to the goal: ").strip()
+    domain = get_valid_domain("Enter the domain related to the goal: ")
+    domain1 = get_valid_domain("Enter the first domain related to the goal: ")
+    domain2 = get_valid_domain("Enter the second domain related to the goal: ")
     # Create agent instances
     agent1 = Agent(id=1, goal=goal, role='expert', domain=domain1)
     agent2 = Agent(id=2, goal=goal, role='expert', domain=domain2)
 
-    agent1_experts = agent1.generate_experts(domain)
-    agent2_experts = agent2.generate_experts(domain)
+    agent1_experts = agent1.generate_experts(domain1)
+    agent2_experts = agent2.generate_experts(domain2)
 
     name1 = agent1_experts[0] if agent1_experts else None
     name2 = agent2_experts[0] if agent2_experts else None  # Update this line
