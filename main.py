@@ -8,10 +8,8 @@ import uuid
 import requests
 import anthropic
 
-import os
-
 # Set the Anthropic API key
-os.environ["ANTHROPIC_API_KEY"] = ""
+os.environ["ANTHROPIC_API_KEY"] = "your-anthropic-api-key"
 
 # Rest of the code...
 
