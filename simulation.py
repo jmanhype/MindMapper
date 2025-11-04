@@ -1,11 +1,13 @@
+from typing import List, Callable, Optional, Any
+
 class Simulation:
-    def __init__(self, agents):
+    def __init__(self, agents: List[Any]):
         self.agents = agents
-        self.data_log = []
-        self.finished = False  # Add this attribute to the Simulation class
+        self.data_log: List[tuple] = []
+        self.finished: bool = False  # Add this attribute to the Simulation class
 
     # Add this method to update the finished status when the termination condition is met
-    def update_finished_status(self):
+    def update_finished_status(self) -> None:
         # Implement termination condition checking logic here
         # For example, you can check if all agents have reached their goals
         all_agents_reached_goal = all([agent.is_goal() for agent in self.agents])
@@ -13,7 +15,7 @@ class Simulation:
         if all_agents_reached_goal:
             self.finished = True
 
-    def run_interactions(self, display_message):
+    def run_interactions(self, display_message: Optional[Callable] = None) -> None:
         for agent in self.agents:
             for other_agent in self.agents:
                 if agent != other_agent:

@@ -36,9 +36,27 @@ The project consists of the following components:
    cd MindMapper
    ```
 
-3. Update the API keys in the agents.py file.
-   Make sure to replace the placeholders with your actual API keys.
-   Refer to the instructions in agents.py for details.
+3. Set up environment variables for API keys:
+
+   ```bash
+   export OPENAI_API_KEY="your-openai-api-key"
+   export ANTHROPIC_API_KEY="your-anthropic-api-key"
+   export GOOGLE_API_KEY="your-google-api-key"
+   ```
+
+   For Windows:
+   ```cmd
+   set OPENAI_API_KEY=your-openai-api-key
+   set ANTHROPIC_API_KEY=your-anthropic-api-key
+   set GOOGLE_API_KEY=your-google-api-key
+   ```
+
+   Or create a `.env` file in the project root (recommended):
+   ```
+   OPENAI_API_KEY=your-openai-api-key
+   ANTHROPIC_API_KEY=your-anthropic-api-key
+   GOOGLE_API_KEY=your-google-api-key
+   ```
    
 4. (Optional) Create a virtual environment:
    
@@ -56,13 +74,19 @@ The project consists of the following components:
    
 ## API Keys
 
-The MindMapper project requires API keys for certain functionalities. You need to obtain the following API keys and update them in the agents.py file:
+The MindMapper project requires API keys for certain functionalities. You need to obtain the following API keys:
 
-Google API Key: Obtain a Google API key from the Google Cloud Console. It is used for agent interactions.
+- **Google API Key**: Obtain a Google API key from the [Google Cloud Console](https://console.cloud.google.com/). Enable the Knowledge Graph Search API. This is used for querying expert information.
 
-OpenAI API Key: Obtain an OpenAI API key from the OpenAI website. It is used for generating context-aware messages.
+- **OpenAI API Key**: Obtain an OpenAI API key from the [OpenAI website](https://platform.openai.com/). This is used for generating context-aware messages in `agents.py`.
 
-Make sure to keep your API keys secure and avoid sharing them publicly.
+- **Anthropic API Key**: Obtain an Anthropic API key from [Anthropic](https://console.anthropic.com/). This is used for Claude-based thought generation in `main.py`.
+
+**Security Best Practices:**
+- Never commit API keys to version control
+- Use environment variables or a `.env` file to store keys
+- Keep your API keys secure and avoid sharing them publicly
+- Add `.env` to your `.gitignore` file
 
 ## Usage
 

@@ -1,6 +1,7 @@
 import os
 import openai
 import random
+from typing import List, Dict, Optional, Any
 from textblob import TextBlob
 from yake import KeywordExtractor
 from enum import Enum
@@ -28,7 +29,7 @@ class SentimentAnalyzer:
         child_node.parent = self
 
 class Agent:
-    def __init__(self, id, goal, name=None, role=None, **kwargs):  # Add **kwargs here
+    def __init__(self, id: int, goal: str, name: Optional[str] = None, role: Optional[str] = None, **kwargs):  # Add **kwargs here
         self.id = id
         self.goal = goal
         self.name = name if name else str(uuid.uuid4())  # Updated name initialization
@@ -36,9 +37,13 @@ class Agent:
         self.role = role  # Add this line to store the
         self.knowledge = set()  # Add this line to include the 'knowledge' attribute
 
-        self.api_key = "ENTER-OPENAI-KEY"
+        self.api_key = os.getenv("OPENAI_API_KEY", "")
+        if not self.api_key:
+            print("Warning: OPENAI_API_KEY environment variable not set")
         openai.api_key = self.api_key
-        self.google_api_key = "ENTER-GOOGLE-KEY"
+        self.google_api_key = os.getenv("GOOGLE_API_KEY", "")
+        if not self.google_api_key:
+            print("Warning: GOOGLE_API_KEY environment variable not set")
 
         self.sentiment_analyzer = SentimentAnalyzer()
         self.emotional_state = "neutral"
@@ -60,37 +65,66 @@ class Agent:
 
         if role == "expert" and not self.experts:
             raise ValueError("Domain not specified for 'expert' agent.")
-    def query_knowledge_graph_api(self, query: str, api_key: str):
+    def query_knowledge_graph_api(self, query: str, api_key: str) -> List[Dict[str, Any]]:
+        """Query the Google Knowledge Graph API with proper error handling."""
+        if not api_key:
+            print("Error: Google API key not provided")
+            return []
+
         url = f'https://kgsearch.googleapis.com/v1/entities:search?query={query}&key={api_key}&limit=10&indent=True'
         headers = {
             'Accept': 'application/json',
         }
 
-        response = requests.get(url, headers=headers)
-
-        if response.status_code == 200:
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
             data = response.json()
             return data.get('itemListElement', [])
-        else:
-            print(f"Error: {response.status_code} - {response.text}")
+        except requests.exceptions.Timeout:
+            print(f"Error: Request timed out for query '{query}'")
+            return []
+        except requests.exceptions.RequestException as e:
+            print(f"Error: Network request failed - {str(e)}")
+            return []
+        except ValueError as e:
+            print(f"Error: Failed to parse JSON response - {str(e)}")
             return []
 
 
-    def generate_thoughts_with_gpt3(self, prompt, n=1, max_token=50):
-        openai.api_key = os.getenv("OPENAI_API_KEY")
-        response = openai.Completion.create(
-            engine="text-davinci-003",
-            prompt=prompt,
-            n=n,
-            max_tokens=max_token,
-            temperature=0.7,
-            top_p=1,
-            frequency_penalty=0
-        )
-        return [choice.text.strip() for choice in response.choices]
+    def generate_thoughts_with_gpt3(self, prompt: str, n: int = 1, max_token: int = 50) -> List[str]:
+        """Generate thoughts using GPT-3 with proper error handling."""
+        if not self.api_key:
+            print("Error: OpenAI API key not set")
+            return []
+
+        openai.api_key = self.api_key
+        try:
+            response = openai.Completion.create(
+                engine="text-davinci-003",
+                prompt=prompt,
+                n=n,
+                max_tokens=max_token,
+                temperature=0.7,
+                top_p=1,
+                frequency_penalty=0
+            )
+            return [choice.text.strip() for choice in response.choices]
+        except openai.error.AuthenticationError:
+            print("Error: Invalid OpenAI API key")
+            return []
+        except openai.error.RateLimitError:
+            print("Error: OpenAI API rate limit exceeded")
+            return []
+        except openai.error.APIError as e:
+            print(f"Error: OpenAI API error - {str(e)}")
+            return []
+        except Exception as e:
+            print(f"Error: Unexpected error in GPT-3 generation - {str(e)}")
+            return []
 
     # Add this method to the Agent class to generate tasks dynamically based on the goal and kwargs
-    def generate_task(self, goal, **kwargs):
+    def generate_task(self, goal: str, **kwargs) -> Dict[str, Any]:
         task_dict = {
             "goal": goal,
             "steps": self.generate_task_steps(goal),  # Generate steps for the task
@@ -102,7 +136,7 @@ class Agent:
 
         return task_dict
     
-    def generate_task_steps(self, goal):
+    def generate_task_steps(self, goal: str) -> List[str]:
         # Use GPT-3 to generate the steps based on user input
         prompt = f"Generate a list of 4 steps to accomplish the goal related to {goal}:"
         steps = self.generate_thoughts_with_gpt3(prompt, n=1, max_token=100)
@@ -112,11 +146,11 @@ class Agent:
         else:
             return []
     
-    def learn_skill(self):
+    def learn_skill(self) -> str:
         available_skills = ['A', 'B', 'C', 'D']
         return random.choice(available_skills)
 
-    def is_goal(self):
+    def is_goal(self) -> bool:
         return self.goal in self.knowledge
 
     def observe(self, other_agent):
@@ -160,19 +194,37 @@ class Agent:
 
         return thoughts
 
-    def query_openai_api(self, prompt):
-        response = openai.Completion.create(
-            engine="davinci-codex",
-            prompt=prompt,
-            max_tokens=100,
-            n=1,
-            stop=None,
-            temperature=0.5,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0,
-        )
-        return response.choices[0].text.strip()
+    def query_openai_api(self, prompt: str) -> str:
+        """Query OpenAI API with proper error handling."""
+        if not self.api_key:
+            print("Error: OpenAI API key not set")
+            return ""
+
+        try:
+            response = openai.Completion.create(
+                engine="davinci-codex",
+                prompt=prompt,
+                max_tokens=100,
+                n=1,
+                stop=None,
+                temperature=0.5,
+                top_p=1,
+                frequency_penalty=0,
+                presence_penalty=0,
+            )
+            return response.choices[0].text.strip()
+        except openai.error.AuthenticationError:
+            print("Error: Invalid OpenAI API key")
+            return ""
+        except openai.error.RateLimitError:
+            print("Error: OpenAI API rate limit exceeded")
+            return ""
+        except openai.error.APIError as e:
+            print(f"Error: OpenAI API error - {str(e)}")
+            return ""
+        except Exception as e:
+            print(f"Error: Unexpected error in OpenAI query - {str(e)}")
+            return ""
 
     def evaluate_thoughts(self, thoughts):
         if len(thoughts) == 0:
@@ -216,7 +268,7 @@ class Agent:
     def cooperate(self, other_agent):
         ...
 
-    def generate_experts(self, domain, num_experts=5):
+    def generate_experts(self, domain: str, num_experts: int = 5) -> List[str]:
         query = f"{domain} experts"
         response = self.query_knowledge_graph_api(query=query, api_key=self.google_api_key)
 
