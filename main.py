@@ -1,5 +1,6 @@
 import os
 import random
+from typing import List, Dict, Optional, Any
 from textblob import TextBlob
 from yake import KeywordExtractor
 from enum import Enum
@@ -8,12 +9,9 @@ import uuid
 import requests
 import anthropic
 
-import os
-
-# Set the Anthropic API key
-os.environ["ANTHROPIC_API_KEY"] = ""
-
-# Rest of the code...
+# Check for Anthropic API key in environment
+if not os.environ.get("ANTHROPIC_API_KEY"):
+    print("Warning: ANTHROPIC_API_KEY environment variable not set")
 
 class ThoughtNode:
     def __init__(self, content, parent=None):
@@ -35,7 +33,7 @@ class SentimentAnalyzer:
         return blob.sentiment.polarity
 
 class Agent:
-    def __init__(self, id, goal, name=None, role=None, **kwargs):
+    def __init__(self, id: int, goal: str, name: Optional[str] = None, role: Optional[str] = None, **kwargs):
         self.id = id
         self.goal = goal
         self.name = name if name else str(uuid.uuid4())
@@ -43,8 +41,13 @@ class Agent:
         self.role = role
         self.knowledge = set()
 
-        self.client = anthropic.Client(api_key="")
-        self.google_api_key = ""
+        api_key = os.getenv("ANTHROPIC_API_KEY", "")
+        if not api_key:
+            raise ValueError("ANTHROPIC_API_KEY environment variable must be set")
+        self.client = anthropic.Client(api_key=api_key)
+        self.google_api_key = os.getenv("GOOGLE_API_KEY", "")
+        if not self.google_api_key:
+            print("Warning: GOOGLE_API_KEY environment variable not set")
 
         self.sentiment_analyzer = SentimentAnalyzer()
         self.emotional_state = "neutral"
@@ -65,33 +68,52 @@ class Agent:
         if role == "expert" and not self.experts:
             raise ValueError("Domain not specified for 'expert' agent.")
 
-    def query_knowledge_graph_api(self, query: str, api_key: str):
+    def query_knowledge_graph_api(self, query: str, api_key: str) -> List[Dict[str, Any]]:
+        """Query the Google Knowledge Graph API with proper error handling."""
+        if not api_key:
+            print("Error: Google API key not provided")
+            return []
+
         url = f'https://kgsearch.googleapis.com/v1/entities:search?query={query}&key={api_key}&limit=10&indent=True'
         headers = {
             'Accept': 'application/json',
         }
 
-        response = requests.get(url, headers=headers)
-
-        if response.status_code == 200:
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
             data = response.json()
             return data.get('itemListElement', [])
-        else:
-            print(f"Error: {response.status_code} - {response.text}")
+        except requests.exceptions.Timeout:
+            print(f"Error: Request timed out for query '{query}'")
+            return []
+        except requests.exceptions.RequestException as e:
+            print(f"Error: Network request failed - {str(e)}")
+            return []
+        except ValueError as e:
+            print(f"Error: Failed to parse JSON response - {str(e)}")
             return []
 
-    def generate_thoughts_with_claude(self, prompt, max_tokens=50):
-        response = self.client.messages.create(
-            model="claude-3-opus-20240229",
-            max_tokens=max_tokens,
-            system="You are a helpful assistant.",
-            messages=[
-                {"role": "user", "content": prompt},
-            ],
-        )
-        return response.content[-1].text.strip()
+    def generate_thoughts_with_claude(self, prompt: str, max_tokens: int = 50) -> str:
+        """Generate thoughts using Claude API with proper error handling."""
+        try:
+            response = self.client.messages.create(
+                model="claude-3-opus-20240229",
+                max_tokens=max_tokens,
+                system="You are a helpful assistant.",
+                messages=[
+                    {"role": "user", "content": prompt},
+                ],
+            )
+            return response.content[-1].text.strip()
+        except anthropic.APIError as e:
+            print(f"Error: Anthropic API error - {str(e)}")
+            return ""
+        except Exception as e:
+            print(f"Error: Unexpected error in Claude generation - {str(e)}")
+            return ""
 
-    def generate_task(self, goal, **kwargs):
+    def generate_task(self, goal: str, **kwargs) -> Dict[str, Any]:
         task_dict = {
             "goal": goal,
             "steps": self.generate_task_steps(goal),
@@ -103,7 +125,7 @@ class Agent:
 
         return task_dict
     
-    def generate_task_steps(self, goal):
+    def generate_task_steps(self, goal: str) -> List[str]:
         prompt = f"Generate a list of 4 steps to accomplish the goal related to {goal}:"
         steps = self.generate_thoughts_with_claude(prompt, max_tokens=100)
         
@@ -112,11 +134,11 @@ class Agent:
         else:
             return []
     
-    def learn_skill(self):
+    def learn_skill(self) -> str:
         available_skills = ['A', 'B', 'C', 'D']
         return random.choice(available_skills)
 
-    def is_goal(self):
+    def is_goal(self) -> bool:
         return self.goal in self.knowledge
 
     def observe(self, other_agent):
@@ -158,14 +180,22 @@ class Agent:
 
         return thoughts
 
-    def query_claude(self, prompt):
-        response = self.client.completion(
-            prompt=f"\n\nHuman: {prompt}\n\nAssistant: ",
-            stop_sequences=["\n\nHuman"],
-            model="claude-3-opus-20240229",
-            max_tokens_to_sample=100,
-        )
-        return response.completion.strip()
+    def query_claude(self, prompt: str) -> str:
+        """Query Claude API with proper error handling."""
+        try:
+            response = self.client.completion(
+                prompt=f"\n\nHuman: {prompt}\n\nAssistant: ",
+                stop_sequences=["\n\nHuman"],
+                model="claude-3-opus-20240229",
+                max_tokens_to_sample=100,
+            )
+            return response.completion.strip()
+        except anthropic.APIError as e:
+            print(f"Error: Anthropic API error - {str(e)}")
+            return ""
+        except Exception as e:
+            print(f"Error: Unexpected error in Claude query - {str(e)}")
+            return ""
 
     def evaluate_thoughts(self, thoughts):
         if len(thoughts) == 0:
@@ -209,7 +239,7 @@ class Agent:
     def cooperate(self, other_agent):
         ...
 
-    def generate_experts(self, domain, num_experts=5):
+    def generate_experts(self, domain: str, num_experts: int = 5) -> List[str]:
         query = f"{domain} experts"
         response = self.query_knowledge_graph_api(query=query, api_key=self.google_api_key)
 
