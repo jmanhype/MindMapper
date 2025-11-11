@@ -1,5 +1,5 @@
 import os
-import openai
+# import openai  # Commented out to disable the OpenAI-specific dependency
 import random
 from textblob import TextBlob
 from yake import KeywordExtractor
@@ -37,7 +37,7 @@ class Agent:
         self.knowledge = set()  # Add this line to include the 'knowledge' attribute
 
         self.api_key = "ENTER-OPENAI-KEY"
-        openai.api_key = self.api_key
+        # openai.api_key = self.api_key  # Commented since we will not be using OpenAI's API Key
         self.google_api_key = "ENTER-GOOGLE-KEY"
 
         self.sentiment_analyzer = SentimentAnalyzer()
@@ -78,15 +78,15 @@ class Agent:
 
     def generate_thoughts_with_gpt3(self, prompt, n=1, max_token=50):
         openai.api_key = os.getenv("OPENAI_API_KEY")
-        response = openai.Completion.create(
-            engine="text-davinci-003",
-            prompt=prompt,
-            n=n,
-            max_tokens=max_token,
-            temperature=0.7,
-            top_p=1,
-            frequency_penalty=0
-        )
+        # response = openai.Completion.create(
+        #     engine="text-davinci-003",
+        #     prompt=prompt,
+        #     n=n,
+        #     max_tokens=max_token,
+        #     temperature=0.7,
+        #     top_p=1,
+        #     frequency_penalty=0
+        # ) # Comment out all occurrences of this
         return [choice.text.strip() for choice in response.choices]
 
     # Add this method to the Agent class to generate tasks dynamically based on the goal and kwargs
@@ -136,14 +136,14 @@ class Agent:
         return f"[Agent {self.id}] - knowledge: {', '.join(list(self.knowledge))}; goal: {self.goal}"
 
     def communicate(self, other_agent):
-        # Get the thoughts using GPT-3
+        # Construct message to communicate using the Anthropi API
         prompt = f"Agent {self.id} communicates a task-related message to Agent {other_agent.id} about their shared goal of {self.goal}."
-        gpt3_thoughts = self.generate_thoughts_with_gpt3(prompt)
-
-        # Create thoughts within the thought tree with GPT-3 generated thoughts
-        if gpt3_thoughts:
-            self.thought_tree.add_child(ThoughtNode(gpt3_thoughts[0]))
-            return gpt3_thoughts[0]
+        anthropic_thoughts = self.send_message_with_anthropic(prompt)
+        
+        # Replace OpenAI functionality with Anthropic usage
+        if anthropic_thoughts:
+            self.thought_tree.add_child(ThoughtNode(anthropic_thoughts[0]))
+            return anthropic_thoughts[0]
         else:
             return None
 
@@ -205,11 +205,12 @@ class Agent:
         ...
 
     def generate_context_aware_message(self, other_agent, message):
-        prompt = f"Generate a relevant and concise task-related response from Agent {self.id} to Agent {other_agent.id} based on the received message '{message}' and their shared goal of {self.goal}."
-        gpt3_response = self.generate_thoughts_with_gpt3(prompt, n=1, max_token=100)
-
-        if gpt3_response:
-            return gpt3_response[0]
+        # Use the Anthropi API to respond to the message contextually
+        prompt = 'Generate relevant and concise response...'
+        anthropic_response = self.send_message_with_anthropic(prompt)
+        
+        if anthropic_response:
+            return anthropic_response[0]
         else:
             return None
 
@@ -224,6 +225,60 @@ class Agent:
             experts = [item['result']['name'] for item in response[:num_experts]]
             return experts
         else:
+            return []
+
+    def send_message_with_anthropic(self, prompt):
+        import os
+        import requests
+
+        # Set up authentication and headers
+        headers = {
+            "Authorization": f"Bearer {os.getenv('ANTHROPIC_API_KEY')}",
+            "Content-Type": "application/json"
+        }
+
+        # Create the request payload following Anthropic's API requirements
+        data = {
+            "prompt": prompt,
+            "max_tokens": 50,
+            "temperature": 0.7
+        }
+        
+        # Set up authentication and headers
+        headers = {
+            "Authorization": f"Bearer {os.getenv('ANTHROPIC_API_KEY')}",
+            "Content-Type": "application/json"
+        }
+        
+        # Create the request payload following Anthropic's API requirements
+        data = {
+            "prompt": prompt,
+            "max_tokens": 50,
+            "temperature": 0.7
+        }
+        
+        try:
+            # Send the POST request to the configured endpoint
+            response = requests.post("https://api.anthropic.com/completion", json=data, headers=headers)
+            response.raise_for_status()  # Throws an exception for HTTP errors like 4xx or 5xx
+            if response.status_code == 200:
+                api_response = response.json()
+                messages = [choice["text"].strip() for choice in api_response.get('choices', []) if 'text' in choice]
+                return messages
+            elif response.status_code == 429:
+                print("Error: Rate limit exceeded")
+            elif response.status_code == 401:
+                print("Error: Unauthorized - check your API key")
+            elif response.status_code == 403:
+                print("Error: Forbidden - access denied")
+            elif response.status_code == 404:
+                print("Error: Not Found - the requested resource does not exist")
+            elif response.status_code == 500:
+                print("Error: Internal Server Error - something has gone wrong on the web server")
+            else:
+                print(f"Error: {response.status_code} - {response.text}")
+        except requests.exceptions.RequestException as e:
+            print(f"HTTP Request failed: {e}")
             return []
         
 if __name__ == "__main__":

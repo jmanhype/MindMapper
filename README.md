@@ -37,7 +37,7 @@ The project consists of the following components:
    ```
 
 3. Update the API keys in the agents.py file.
-   Make sure to replace the placeholders with your actual API keys.
+   Replace the Anthropic API key placeholder with your actual Anthropic API key. Setup instructions inspired by the Anthropic API documentation can be found at https://docs.anthropic.com.
    Refer to the instructions in agents.py for details.
    
 4. (Optional) Create a virtual environment:
@@ -60,7 +60,7 @@ The MindMapper project requires API keys for certain functionalities. You need t
 
 Google API Key: Obtain a Google API key from the Google Cloud Console. It is used for agent interactions.
 
-OpenAI API Key: Obtain an OpenAI API key from the OpenAI website. It is used for generating context-aware messages.
+Anthropic API Key: Obtain an Anthropic API key from the Anthropic website. It is used for generating context-aware messages.
 
 Make sure to keep your API keys secure and avoid sharing them publicly.
 
